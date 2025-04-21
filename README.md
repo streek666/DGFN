@@ -1,8 +1,10 @@
-# Generative Flow Networks as Entropy-Regularized RL
+# Beyond Squared Error: Exploring Loss Design for Enhanced Training of Generative Flow Networks
 
-Official code for the paper [Generative Flow Networks as Entropy-Regularized RL](https://arxiv.org/abs/2310.12934). 
+Official code for the paper [Beyond Squared Error: Exploring Loss Design for Enhanced Training of Generative Flow Networks](https://arxiv.org/abs/2410.02596). 
 
-Daniil Tiapkin*, Nikita Morozov*, Alexey Naumov, Dmitry Vetrov.
+Rui Hu*, Yifan Zhang*, Zhuoran Li, Longbo Huang
+
+This repo is modified from `gflownet-rl` (https://github.com/d-tiapkin/gflownet-rl)
 
 ## Installation
 
@@ -26,11 +28,28 @@ You can change `pytorch-cuda=11.8` with `pytorch-cuda=XX.X` to match your versio
 pip install -r requirements.txt
 ```
 
+```sh
+cd torchgfn
+pip install -e .
+cd ..
+```
+
 -*(Optional)* Install dependencies for molecule experiemtns
 ```sh
 pip install -r requirements_mols.txt
 ```
 You can change `requirements_mols.txt` to match your `CUDA` version by replacing `cu118` by `cuXXX`.
+
+## Divergence-based Regression losses
+
+Implemented in `torchgfn/src/gfn/loss.py`
+
+List of available divergence-based losses:
+- Linex($\alpha$) loss, in `class G_alpha`, where $\alpha=-1,0,0.5,1,2$ corresponds to reverse-$\chi^2$, reverse-KL, Hellinger's, forward-KL and forward $\chi^2$ divergece, respectively
+- Shifted-cosh loss, in `class H_alpha`
+- Total variation distance, in `class V_alpha`
+- Jenson-Shannon divergence, in `class G_JSD`
+- Symmetric-KL divergence, in `class G_SKL`
 
 ## Hypergrids
 
@@ -43,18 +62,12 @@ Path to configurations (utlizes `ml-collections` library):
 - Environment: `hypergrid/experiments/config/hypergrid.py`
 
 List of available algorithms:
-- Baselines: `db`, `tb`, `subtb` from `torchgfn` library;
-- Soft RL algorithms: `soft_dqn`, `munchausen_dqn`, `sac`.
+- Baselines: `fm`, `db`, `tb`, `subtb`
 
-Example of running the experiment on environment with `height=20`, `ndim=4` with `standard` rewards, seed `3` on the algorithm `soft_dqn`.
+Example of running the experiment on environment with `height=20`, `ndim=4` with `hard6` rewards, seed `101` on the algorithm `fm` and Linex(1) loss:
 ```bash
-    python run_hypergrid_exp.py --general experiments/config/general.py:3 --env experiments/config/hypergrid.py:standard --algo experiments/config/algo.py:soft_dqn --env.height 20 --env.ndim 4
+python run_hypergrid_exp.py --general experiments/config/general.py:101 --env experiments/config/hypergrid.py:hard6 --algo experiments/config/algo.py:fm --env.height 20 --env.ndim 4 --algo.loss_type G --algo.alpha 1.00
 ```
-To activate learnable backward policy for this setting
-```bash
-    python run_hypergrid_exp.py --general experiments/config/general.py:3 --env experiments/config/hypergrid.py:standard --algo experiments/config/algo.py:soft_dqn --env.height 20 --env.ndim 4 --algo.tied True --algo.uniform_pb False
-```
-
 
 ## Molecules
 
@@ -63,55 +76,23 @@ The presented experiments actively reuse the existing codebase for molecule gene
 Additional requirements for molecule experiments: 
 - `pandas rdkit torch_geometric h5py ray hydra` (installation is available in `requirements_mols.txt`)
 
-Path to configurations of `MunchausenDQN` (utilizes `hydra` library)
-- General configuration: `mols/configs/soft_dqn.yaml`
-- Algorithm: `mols/configs/algorithm/soft_dqn.yaml`
-- Environment:  `mols/configs/environment/block_mol.yaml`
+List of available algorithms:
+- Baselines: `fm`, `db`, `tb`, `subtb`
 
-To run `MunchausenDQN` with configurations prescribed above, use
+Example of running the experiment with seed `101` on the algorithm `fm` and Linex(1) loss:
+```bash
+python gflownet.py --objective fm --loss_type G --alpha 1.00 --seed 101
 ```
-    python soft_dqn.py
-```
-To reporoduce baselines, run `gflownet.py` with required parameters, we refer to the original repository https://github.com/GFNOrg/gflownet for additional details.
-
 
 ## Bit sequences
 
-Examples of running `TB`, `DB` and `SubTB` baselines for word length `k=8`:
+Code of this part also uses library `FL-GFN` (https://github.com/ling-pan/FL-GFN)
 
-```
-python bitseq/run.py --objective tb --k 8 --learning_rate 0.002
-```
+List of available algorithms:
+- Baselines: `db`, `tb`, `subtb`
 
-```
-python bitseq/run.py --objective db --k 8 --learning_rate 0.002
-```
+Example of running the experiment with seed `101` on the algorithm `db` and Linex(1) loss:
 
-```
-python bitseq/run.py --objective subtb --k 8 --learning_rate 0.002 --subtb_lambda 1.9
-```
-
-Example of running `SoftDQN`:
-
-```
-python bitseq/run.py --objective softdqn --m_alpha 0.0 --k 8 --learning_rate 0.002 --leaf_coeff 2.0 
-```
-
-Example of running `MunchausenDQN`:
-
-```
-python bitseq/run.py --objective softdqn --m_alpha 0.15 --k 8 --learning_rate 0.002 --leaf_coeff 2.0 
-```
-
-## Citation
-
-```
-@inproceedings{tiapkin2024generative,
-  title={Generative flow networks as entropy-regularized rl},
-  author={Tiapkin, Daniil and Morozov, Nikita and Naumov, Alexey and Vetrov, Dmitry P},
-  booktitle={International Conference on Artificial Intelligence and Statistics},
-  pages={4213--4221},
-  year={2024},
-  organization={PMLR}
-}
+```bash
+python bitseq/run.py --objective db --forward_looking --k 8 --loss_type G --alpha 1.00 --seed 101
 ```
